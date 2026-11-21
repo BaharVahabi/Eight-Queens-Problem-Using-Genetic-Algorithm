@@ -147,6 +147,4 @@ This project was developed to explore and demonstrate:
 - Elitism
 - Evolution of populations across generations
 
-## 📄 License
 
-This project is available for educational and learning purposes.
