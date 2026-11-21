@@ -63,6 +63,8 @@ export default function App() {
             onStop={stop}
             onReset={reset}
           />
+          <StatusIndicator runState={runState} status={status} />
+
           <ModeToggle mode={mode} onChange={changeMode} />
           {mode === MODE.STEP && (
             <StepControls
@@ -77,7 +79,6 @@ export default function App() {
               onSpeedChange={setSpeed}
             />
           )}
-          <StatusIndicator runState={runState} status={status} />
           <ResultBanner
             runState={runState}
             generation={snapshot.generation}

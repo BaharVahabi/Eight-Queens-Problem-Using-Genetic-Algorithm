@@ -19,7 +19,7 @@ export default function ControlButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${VARIANTS[variant]}`}
+      className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 ${VARIANTS[variant]}`}
     >
       <Icon aria-hidden="true" />
       {label}
