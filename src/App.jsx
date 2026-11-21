@@ -1,17 +1,40 @@
 import useGeneticAlgorithm from "./hooks/useGeneticAlgorithm";
-import { RUN_STATE } from "./ga/constants";
+import { MODE, RUN_STATE } from "./ga/constants";
 import DashboardLayout from "./components/layout/DashboardLayout";
 import Header from "./components/layout/Header";
 import StatsGrid from "./components/stats/StatsGrid";
 import Chessboard from "./components/board/Chessboard";
 import ControlPanel from "./components/controls/ControlPanel";
+import ModeToggle from "./components/controls/ModeToggle";
+import StepControls from "./components/controls/StepControls";
 import StatusIndicator from "./components/status/StatusIndicator";
 import ResultBanner from "./components/result/ResultBanner";
 import PopulationPanel from "./components/population/PopulationPanel";
+import StepInspector from "./components/trace/StepInspector";
 
 export default function App() {
-  const { runState, status, snapshot, elapsedMs, start, stop, reset } =
-    useGeneticAlgorithm();
+  const {
+    mode,
+    changeMode,
+    runState,
+    status,
+    snapshot,
+    elapsedMs,
+    start,
+    stop,
+    reset,
+    stageTrace,
+    generationTrace,
+    cursor,
+    autoplay,
+    speed,
+    setSpeed,
+    canStep,
+    canSkip,
+    nextStep,
+    skipStage,
+    toggleAutoplay,
+  } = useGeneticAlgorithm();
 
   const isSolved = runState === RUN_STATE.SOLVED;
 
@@ -40,6 +63,20 @@ export default function App() {
             onStop={stop}
             onReset={reset}
           />
+          <ModeToggle mode={mode} onChange={changeMode} />
+          {mode === MODE.STEP && (
+            <StepControls
+              runState={runState}
+              canStep={canStep}
+              canSkip={canSkip}
+              autoplay={autoplay}
+              speed={speed}
+              onNext={nextStep}
+              onSkip={skipStage}
+              onToggleAutoplay={toggleAutoplay}
+              onSpeedChange={setSpeed}
+            />
+          )}
           <StatusIndicator runState={runState} status={status} />
           <ResultBanner
             runState={runState}
@@ -49,6 +86,14 @@ export default function App() {
           />
           <PopulationPanel chromosomes={snapshot.topChromosomes} />
         </>
+      }
+      inspector={
+        <StepInspector
+          mode={mode}
+          stageTrace={stageTrace}
+          generationTrace={generationTrace}
+          cursor={cursor}
+        />
       }
     />
   );

@@ -3,9 +3,10 @@ import {
   MAX_FITNESS,
   STATUS,
   TOP_CHROMOSOMES_COUNT,
+  TRACE,
 } from "./constants";
 import { createPopulation } from "./chromosome";
-import { evaluatePopulation } from "./fitness";
+import { calculateFitness, evaluatePopulation } from "./fitness";
 import { selectParents } from "./selection";
 import { crossoverPair } from "./crossover";
 import { swapMutation } from "./mutation";
@@ -26,9 +27,13 @@ export class GeneticAlgorithm {
     this.generation = 0;
     this.population = []; // آرایه‌ای از ژن‌ها
     this.evaluated = []; // افراد مرتب‌شده بر اساس fitness
-    this.parentPairs = [];
-    this.offspring = [];
+    this.selections = [];
+    this.crossoverResults = [];
     this.globalBest = null;
+  }
+
+  get offspringCount() {
+    return this.config.populationSize - this.config.eliteCount;
   }
 
   // اجرای یک مرحله از الگوریتم
@@ -45,14 +50,18 @@ export class GeneticAlgorithm {
       case STAGE.MUTATE:
         return this.mutateAndBuildNextGeneration();
       default:
-        return this.result(STATUS.SOLVED, null);
+        return this.result(STATUS.SOLVED, null, null);
     }
   }
 
   generatePopulation() {
     this.population = createPopulation(this.config.populationSize);
     this.stage = STAGE.EVALUATE;
-    return this.result(STATUS.GENERATING, null);
+
+    const trace = this.buildTrace(TRACE.GENERATE, [
+      { size: this.population.length, samples: this.population.slice(0, 4) },
+    ]);
+    return this.result(STATUS.GENERATING, null, trace);
   }
 
   evaluate() {
@@ -64,61 +73,119 @@ export class GeneticAlgorithm {
       this.globalBest = best;
     }
 
+    const average =
+      this.evaluated.reduce((sum, individual) => sum + individual.fitness, 0) /
+      this.evaluated.length;
+    const trace = this.buildTrace(TRACE.EVALUATE, [
+      { individuals: this.evaluated, average },
+    ]);
+
     if (best.fitness === MAX_FITNESS) {
       this.stage = STAGE.DONE;
-      return this.result(STATUS.SOLVED, "solved");
+      return this.result(STATUS.SOLVED, "solved", trace);
     }
 
     if (this.generation >= this.config.maxGenerations) {
       this.stage = STAGE.DONE;
-      return this.result(STATUS.EVALUATING, "maxGenerations");
+      return this.result(STATUS.EVALUATING, "maxGenerations", trace);
     }
 
     this.stage = STAGE.SELECT;
-    return this.result(STATUS.EVALUATING, null);
+    return this.result(STATUS.EVALUATING, null, trace);
   }
 
   select() {
-    const offspringCount =
-      this.config.populationSize - this.config.eliteCount;
-    const pairCount = Math.ceil(offspringCount / 2);
+    const pairCount = Math.ceil(this.offspringCount / 2);
 
-    this.parentPairs = selectParents(
+    this.selections = selectParents(
       this.evaluated,
       pairCount,
       this.config.tournamentSize
     );
     this.stage = STAGE.CROSSOVER;
-    return this.result(STATUS.SELECTING, null);
+
+    const trace = this.buildTrace(
+      TRACE.SELECT,
+      this.selections.map((selection, pairIndex) => ({
+        pairIndex,
+        ...selection,
+      }))
+    );
+    return this.result(STATUS.SELECTING, null, trace);
   }
 
   crossover() {
-    const offspringCount =
-      this.config.populationSize - this.config.eliteCount;
-
-    this.offspring = this.parentPairs
-      .flatMap(([a, b]) =>
-        crossoverPair(a.genes, b.genes, this.config.crossoverRate)
+    this.crossoverResults = this.selections.map(({ parents }) =>
+      crossoverPair(
+        parents[0].genes,
+        parents[1].genes,
+        this.config.crossoverRate
       )
-      .slice(0, offspringCount);
-
+    );
     this.stage = STAGE.MUTATE;
-    return this.result(STATUS.CROSSOVER, null);
+
+    const trace = this.buildTrace(
+      TRACE.CROSSOVER,
+      this.crossoverResults.map((result, pairIndex) => ({
+        pairIndex,
+        parents: this.selections[pairIndex].parents,
+        applied: result.applied,
+        start: result.start,
+        end: result.end,
+        children: result.children.map((child) => ({
+          ...child,
+          fitness: calculateFitness(child.genes),
+        })),
+      }))
+    );
+    return this.result(STATUS.CROSSOVER, null, trace);
   }
 
   mutateAndBuildNextGeneration() {
-    this.offspring = this.offspring.map((genes) =>
-      swapMutation(genes, this.config.mutationRate)
-    );
+    const mutatedChildren = [];
+
+    const pairItems = this.crossoverResults.map((result, pairIndex) => {
+      const children = result.children.map((child) => {
+        const outcome = swapMutation(child.genes, this.config.mutationRate);
+        mutatedChildren.push(outcome.genes);
+
+        return {
+          before: child.genes,
+          after: outcome.genes,
+          swap: outcome.swap,
+          fitnessBefore: calculateFitness(child.genes),
+          fitnessAfter: calculateFitness(outcome.genes),
+        };
+      });
+
+      return { kind: "pair", pairIndex, children };
+    });
 
     // Elitism: بهترین‌ها بدون تغییر به نسل بعد می‌رن
-    const elites = this.evaluated
-      .slice(0, this.config.eliteCount)
-      .map((individual) => [...individual.genes]);
+    const elites = this.evaluated.slice(0, this.config.eliteCount);
+    const offspring = mutatedChildren.slice(0, this.offspringCount);
 
-    this.population = [...elites, ...this.offspring];
+    this.population = [...elites.map((e) => [...e.genes]), ...offspring];
     this.stage = STAGE.EVALUATE;
-    return this.result(STATUS.MUTATION, null);
+
+    const nextGenerationItem = {
+      kind: "nextGeneration",
+      elites,
+      offspring: offspring.map((genes) => ({
+        genes,
+        fitness: calculateFitness(genes),
+      })),
+    };
+
+    const trace = this.buildTrace(TRACE.MUTATE, [
+      ...pairItems,
+      nextGenerationItem,
+    ]);
+    return this.result(STATUS.MUTATION, null, trace);
+  }
+
+  buildTrace(type, items) {
+    return { type, generation: this.generation, items };
   }
 
   getSnapshot() {
@@ -130,7 +197,7 @@ export class GeneticAlgorithm {
     };
   }
 
-  result(status, finished) {
-    return { status, finished, snapshot: this.getSnapshot() };
+  result(status, finished, trace) {
+    return { status, finished, trace, snapshot: this.getSnapshot() };
   }
 }

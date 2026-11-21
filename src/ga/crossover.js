@@ -1,34 +1,67 @@
-export function orderCrossover(parentA, parentB) {
-  const size = parentA.length;
-
+export function randomCutPoints(size) {
   let start = Math.floor(Math.random() * size);
   let end = Math.floor(Math.random() * size);
   if (start > end) [start, end] = [end, start];
+  return [start, end];
+}
 
-  const child = new Array(size).fill(null);
+// بازه [start, end] از segmentParent کپی می‌شه و بقیه از fillParent پر می‌شه
+export function orderCrossover(segmentParent, fillParent, start, end) {
+  const size = segmentParent.length;
+  const genes = new Array(size).fill(null);
+  const sources = new Array(size).fill("fill");
   const used = new Set();
 
   for (let i = start; i <= end; i++) {
-    child[i] = parentA[i];
-    used.add(parentA[i]);
+    genes[i] = segmentParent[i];
+    sources[i] = "segment";
+    used.add(segmentParent[i]);
   }
 
   let position = (end + 1) % size;
   for (let k = 0; k < size; k++) {
-    const gene = parentB[(end + 1 + k) % size];
+    const gene = fillParent[(end + 1 + k) % size];
     if (used.has(gene)) continue;
 
-    child[position] = gene;
+    genes[position] = gene;
     used.add(gene);
     position = (position + 1) % size;
   }
 
-  return child;
+  return { genes, sources };
 }
 
+// sources هر فرزند: "A" یعنی ژن از والد اول و "B" یعنی از والد دوم
 export function crossoverPair(parentA, parentB, crossoverRate) {
   if (Math.random() < crossoverRate) {
-    return [orderCrossover(parentA, parentB), orderCrossover(parentB, parentA)];
+    const [start, end] = randomCutPoints(parentA.length);
+    const first = orderCrossover(parentA, parentB, start, end);
+    const second = orderCrossover(parentB, parentA, start, end);
+
+    return {
+      applied: true,
+      start,
+      end,
+      children: [
+        {
+          genes: first.genes,
+          sources: first.sources.map((s) => (s === "segment" ? "A" : "B")),
+        },
+        {
+          genes: second.genes,
+          sources: second.sources.map((s) => (s === "segment" ? "B" : "A")),
+        },
+      ],
+    };
   }
-  return [[...parentA], [...parentB]];
+
+  return {
+    applied: false,
+    start: null,
+    end: null,
+    children: [
+      { genes: [...parentA], sources: parentA.map(() => "A") },
+      { genes: [...parentB], sources: parentB.map(() => "B") },
+    ],
+  };
 }

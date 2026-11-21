@@ -12,7 +12,7 @@ export const GA_CONFIG = {
   maxGenerations: 500,
 };
 
-// تاخیر بین مراحل الگوریتم (برای اینکه کاربر مراحل رو ببینه)
+// تاخیر بین مراحل در حالت Auto Run
 export const STAGE_DELAY_MS = 120;
 
 export const TOP_CHROMOSOMES_COUNT = 4;
@@ -32,4 +32,25 @@ export const RUN_STATE = {
   STOPPED: "stopped",
   SOLVED: "solved",
   MAX_REACHED: "maxReached",
+};
+
+export const MODE = {
+  AUTO: "auto",
+  STEP: "step",
+};
+
+// تاخیر بین قدم‌ها در Auto-play حالت Step by Step
+export const STEP_SPEEDS = {
+  slow: { label: "Slow", delay: 1200 },
+  normal: { label: "Normal", delay: 600 },
+  fast: { label: "Fast", delay: 200 },
+};
+
+// نوع trace هر مرحله از الگوریتم
+export const TRACE = {
+  GENERATE: "generate",
+  EVALUATE: "evaluate",
+  SELECT: "select",
+  CROSSOVER: "crossover",
+  MUTATE: "mutate",
 };
