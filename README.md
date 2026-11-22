@@ -127,6 +127,42 @@ npm run dev
 
 5. Open the local URL provided by Vite in your browser.
 
+## Project Structure
+
+The algorithm lives in `src/ga/` and has **no dependency on React**. The UI only consumes its output.
+
+```
+src/
+├── ga/                          # Pure algorithm logic (no React)
+│   ├── constants.js             # Parameters, stage names, run states
+│   ├── chromosome.js            # Random chromosomes and population
+│   ├── fitness.js               # Conflict counting and fitness
+│   ├── selection.js             # Tournament selection
+│   ├── crossover.js             # Order Crossover (OX)
+│   ├── mutation.js              # Swap mutation
+│   └── geneticAlgorithm.js      # Stage-by-stage orchestrator, elitism, global best
+│
+├── hooks/
+│   ├── useGeneticAlgorithm.js   # Bridge between the algorithm and the UI
+│   ├── useStepPlayback.js       # Step-by-step playback state
+│   └── useTimer.js              # Accurate timer using performance.now()
+│
+├── components/
+│   ├── board/                   # Chessboard, Square, Queen
+│   ├── stats/                   # StatCard, StatsGrid
+│   ├── population/              # PopulationPanel, ChromosomeRow
+│   ├── controls/                # ControlPanel, ControlButton, ModeToggle, StepControls
+│   ├── status/                  # StatusIndicator
+│   ├── result/                  # ResultBanner
+│   ├── layout/                  # Header, DashboardLayout
+│   └── trace/                   # Step-by-step views (selection, crossover, mutation, tree)
+│
+├── utils/                       # formatTime, geneRoles
+├── App.jsx
+├── main.jsx
+└── index.css
+```
+
 ## 🎮 Execution Modes
 
 The application provides two execution modes:
